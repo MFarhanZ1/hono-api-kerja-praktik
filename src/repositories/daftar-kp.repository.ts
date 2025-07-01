@@ -145,6 +145,18 @@ export default class DaftarKPRepository {
     kelas_kp,
   }: RepositoryUpdatePendaftaranKPInterface): Promise<void> {
     if (dataKPMahasiswa.level_akses === 0) {
+      // const dataInstansi = await DaftarKPRepository.findInstansiById(
+      //   idInstansi
+      // );
+
+      // if (!dataInstansi) {
+      //   throw new APIError("Data instansi tidak ditemukan");
+      // } else if (dataInstansi.status === "Pending") {
+      //   throw new APIError("Instansi belum disetujui oleh koordinator KP");
+      // } else if (dataInstansi.status === "Tidak_Aktif") {
+      //   throw new APIError("Instansi yang dipilih tidak aktif");
+      // }
+
       await prisma.pendaftaran_kp.update({
         where: {
           id: dataKPMahasiswa.id,
@@ -471,6 +483,7 @@ export default class DaftarKPRepository {
       },
       include: {
         mahasiswa: true,
+        instansi: true,
       },
     });
   }
@@ -1175,7 +1188,7 @@ export default class DaftarKPRepository {
     return dataTahunAjaran;
   }
 
-  public static async createPermomohonanKP({
+  public static async createPermohonanKP({
     nim,
     idInstansi,
     tujuanSuratInstansi,
@@ -1314,6 +1327,22 @@ export default class DaftarKPRepository {
         dataBaru.status_link_surat_penolakan_instansi === "Divalidasi") ||
       (dataLama.level_akses !== 0 && dataBaru.level_akses === 0)
     ) {
+      const dataLOG = await prisma.lOG.findFirst({
+        where: {
+          pendaftaran_kp_id: dataLama.id,
+          status: 999,
+        },
+      });
+      if (dataLOG) {
+        await prisma.lOG.update({
+          where: {
+            id: dataLOG.id,
+          },
+          data: {
+            status: 1,
+          },
+        });
+      }
       await prisma.pendaftaran_kp.update({
         where: {
           id: dataLama.id,

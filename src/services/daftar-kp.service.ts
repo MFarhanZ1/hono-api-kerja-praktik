@@ -80,6 +80,7 @@ export default class DaftarKPService {
     if (nomorBerkas < 0 || nomorBerkas > 5) {
       throw new APIError("Nomor berkas tidak kosong", 400);
     }
+    
 
     if (
       (dataKP.level_akses < 1 && nomorBerkas === 1) ||
@@ -131,23 +132,22 @@ export default class DaftarKPService {
     if (!dataKPMahasiswa) {
       throw new APIError("Data KP mahasiswa tidak ditemukan");
     }
+    // if (dataKPMahasiswa.level_akses !== 0) {
+    //   throw new APIError(
+    //     "Surat Penolakan Instansi belum disetujui koordinator kerja praktik",
+    //     403
+    //   );
+    // }
 
-    if (dataKPMahasiswa.level_akses !== 0) {
-      throw new APIError(
-        "Surat Penolakan Instansi belum disetujui koordinator kerja praktik",
-        403
-      );
-    }
+    // const dataInstansi = await DaftarKPRepository.findInstansiById(idInstansi);
 
-    const dataInstansi = await DaftarKPRepository.findInstansiById(idInstansi);
-
-    if (!dataInstansi) {
-      throw new APIError("Data instansi tidak ditemukan");
-    } else if (dataInstansi.status === "Pending") {
-      throw new APIError("Instansi belum disetujui oleh koordinator KP");
-    } else if (dataInstansi.status === "Tidak_Aktif") {
-      throw new APIError("Instansi yang dipilih tidak aktif");
-    }
+    // if (!dataInstansi) {
+    //   throw new APIError("Data instansi tidak ditemukan");
+    // } else if (dataInstansi.status === "Pending") {
+    //   throw new APIError("Instansi belum disetujui oleh koordinator KP");
+    // } else if (dataInstansi.status === "Tidak_Aktif") {
+    //   throw new APIError("Instansi yang dipilih tidak aktif");
+    // }
 
     const isPendaftaranKPClosed = await IsPendaftaranKPClosed();
 
@@ -263,7 +263,7 @@ export default class DaftarKPService {
   }
 
   public static async getDataKPMahasiswaBagianUmum(): Promise<ServicePendaftaranKPMahasiswa> {
-    const data = await DaftarKPRepository.getDataKPMahasiswa();
+    const data = await DaftarKPRepository.getDataKPMahasiswaBagianUmum();
 
     return {
       response: true,
@@ -485,13 +485,13 @@ export default class DaftarKPService {
       throw new APIError("Data mahasiswa tidak ditemukan", 404);
     }
 
-    const status_murojaah = await MahasiswaService.checkMurojaahDaftarKP(
-      "12250111794"
-    );
+    // const status_murojaah = await MahasiswaService.checkMurojaahDaftarKP(
+    //   "12250111794"
+    // );
 
-    if (status_murojaah) {
-      throw new APIError("Syarat Muroja'ah anda belum terpenuhi", 403);
-    }
+    // if (status_murojaah) {
+    //   throw new APIError("Syarat Muroja'ah anda belum terpenuhi", 403);
+    // }
 
     const dataKPMahasiswa = await cekKPTerbaruMahasiswa(dataMhs.nim);
 
@@ -532,7 +532,7 @@ export default class DaftarKPService {
       throw new APIError("Instansi termasuk ke dalam daftar blacklist");
     }
 
-    await DaftarKPRepository.createPermomohonanKP({
+    await DaftarKPRepository.createPermohonanKP({
       nim: dataMhs.nim,
       tanggalMulai,
       idInstansi,

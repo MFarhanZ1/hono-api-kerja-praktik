@@ -22,7 +22,7 @@ app.use(
   "*",
   cors({
     origin: "*", // restrict this in production
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     exposeHeaders: ["Content-Length", "X-Request-Id"],
     maxAge: 3600,
