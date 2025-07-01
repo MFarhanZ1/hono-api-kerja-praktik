@@ -1,32 +1,96 @@
 import { Context } from "hono";
 import DaftarKPService from "../services/daftar-kp.service";
 import { APIError } from "../utils/api-error.util";
-import { pendaftaran_kp } from "../generated/prisma";
+import {
+  PatchBerkasMahasiswaInterface,
+  PutDataInstansiInterface,
+  PutMahasiswaParamsInterface,
+} from "../types/daftar-kp/handler.type";
 
 export default class DaftarKPHandler {
-  public static async accBerkasMahasiswa(c: Context) {
-    const { id, catatan } = (await c.req.json()) as any;
+  public static async postLOGPPencetakanSuratPengantar(c: Context) {
+    const { id } = await c.req.json();
+
+    if (!id) {
+      throw new APIError("ID pendaftaran kerja praktik tidak diisi", 400);
+    }
+
+    return c.json(
+      await DaftarKPService.postLOGPPencetakanSuratPengantar(id),
+      201
+    );
+  }
+
+  public static async getStatistikPendaftaran(c: Context) {
+    return c.json(await DaftarKPService.getStatistikPendaftaran());
+  }
+
+  public static async getDataDosen(c: Context) {
+    return c.json(await DaftarKPService.getDataDosen());
+  }
+
+  public static async patchBerkasDaftarKP(c: Context) {
+    // const { email } = c.get("user");
+    const email = "a@gmail.com";
+    const { data, nomorBerkas, tanggalMulai, tanggalSelesai, nipDospem } =
+      await c.req.json();
+
+    if (!email) {
+      throw new APIError("Data email tidak ditemukan", 400);
+    } else if (!data) {
+      throw new APIError("Link surat tidak diisi", 400);
+    } else if (!nomorBerkas && nomorBerkas !== 0) {
+      throw new APIError("Nomor berkas tidak diisi", 400);
+    }
+
+    return c.json(
+      await DaftarKPService.patchBerkasDaftarKP(
+        email,
+        data,
+        nomorBerkas,
+        tanggalMulai,
+        tanggalSelesai,
+        nipDospem
+      )
+    );
+  }
+
+  public static async patchBerkasMahasiswa(c: Context) {
+    const { id } = c.req.param();
+    const { nomorBerkas, status, catatan } =
+      (await c.req.json()) as PatchBerkasMahasiswaInterface;
 
     if (!id) {
       throw new APIError("ID pendaftaran KP tidak ditemukan");
     }
 
-    return c.json(await DaftarKPService.accBerkasMahasiswa(id, catatan));
-  }
+    if (!nomorBerkas && nomorBerkas !== 0) {
+      throw new APIError("Nomor Berkas Kosong");
+    }
 
-  public static async postTanggalDaftarKP(c: Context) {
-    const { tanggalMulai, tanggalTerakhir } = await c.req.json();
+    if (!status || (status !== "Divalidasi" && status !== "Ditolak")) {
+      throw new APIError(
+        "Status Berkas Kosong atau tidak sesuai dengan format"
+      );
+    }
+
     return c.json(
-      await DaftarKPService.postTanggalDaftarKP(tanggalMulai, tanggalTerakhir)
+      await DaftarKPService.patchBerkasMahasiswa(
+        id,
+        nomorBerkas,
+        status,
+        catatan
+      )
     );
   }
 
-  public static async postTanggalDaftarKPLanjut(c: Context) {
-    const { tanggalMulai, tanggalTerakhir } = await c.req.json();
+  public static async patchTanggalDaftarKP(c: Context) {
+    const { tanggalMulai, tanggalTerakhir, type } = await c.req.json();
     return c.json(
-      await DaftarKPService.postTanggalDaftarKPLanjut(
+      await DaftarKPService.patchTanggalDaftarKP(
         tanggalMulai,
-        tanggalTerakhir
+        tanggalTerakhir,
+        type
       )
     );
   }
@@ -59,14 +123,8 @@ export default class DaftarKPHandler {
     return c.json(await DaftarKPService.getDataKPMahasiswa());
   }
 
-  public static async postTolakBerkasMahasiswa(c: Context) {
-    const { id, message } = await c.req.json();
-
-    if (!id) {
-      throw new APIError("Id kerja praktek mahasiswa kosong");
-    }
-
-    return c.json(await DaftarKPService.postTolakBerkasMahasiswa(id, message));
+  public static async getDataKPMahasiswaBagianUmum(c: Context) {
+    return c.json(await DaftarKPService.getDataKPMahasiswaBagianUmum());
   }
 
   public static async deleteDataInstansi(c: Context) {
@@ -79,9 +137,26 @@ export default class DaftarKPHandler {
     return c.json(await DaftarKPService.deleteDataInstansi(id));
   }
 
-  public static async editDataInstansi(c: Context) {
+  public static async patchDataInstansi(c: Context) {
+    const { id } = c.req.param();
+    const { status } = (await c.req.json()) as PutDataInstansiInterface;
+
+    if (!id) {
+      throw new APIError("ID data instansi kosong");
+    } else if (
+      status !== "Aktif" &&
+      status !== "Pending" &&
+      status !== "Tidak_Aktif" &&
+      status !== ""
+    ) {
+      throw new APIError("Status instansi tidak valid");
+    }
+
+    return c.json(await DaftarKPService.patchDataInstansi(id, status));
+  }
+
+  public static async createInstansi(c: Context) {
     const {
-      id,
       status,
       profil_singkat,
       nama,
@@ -92,7 +167,71 @@ export default class DaftarKPHandler {
       jenis,
       nama_pj,
       no_hp_pj,
-    } = (await c.req.json()) as any;
+    } = await c.req.json();
+
+    if (
+      !status ||
+      !nama ||
+      !longitude ||
+      !latitude ||
+      !radius ||
+      !jenis ||
+      !nama_pj ||
+      !no_hp_pj
+    ) {
+      throw new APIError("Format data instansi tidak valid", 400);
+    }
+
+    if (
+      status !== "Aktif" &&
+      status !== "Pending" &&
+      status !== "Tidak_Aktif" &&
+      status !== ""
+    ) {
+      throw new APIError("Status instansi tidak valid");
+    }
+
+    if (
+      jenis &&
+      jenis !== "Pendidikan" &&
+      jenis !== "UMKM" &&
+      jenis !== "Swasta" &&
+      jenis !== "Pemerintahan"
+    ) {
+      throw new APIError("Harus memasukkan jenis instansi yang valid");
+    }
+
+    return c.json(
+      await DaftarKPService.createInstansi({
+        longitude,
+        latitude,
+        radius,
+        status,
+        profil_singkat,
+        nama,
+        alamat,
+        jenis,
+        nama_pj,
+        no_hp_pj,
+      }),
+      201
+    );
+  }
+
+  public static async editDataInstansi(c: Context) {
+    const { id } = c.req.param();
+    const {
+      status,
+      profil_singkat,
+      nama,
+      alamat,
+      longitude,
+      latitude,
+      radius,
+      jenis,
+      nama_pj,
+      no_hp_pj,
+    } = (await c.req.json()) as PutDataInstansiInterface;
 
     if (!id) {
       throw new APIError("ID data instansi kosong");
@@ -137,8 +276,8 @@ export default class DaftarKPHandler {
   }
 
   public static async getKPTerbaruMahasiswa(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
+    // const { email } = c.get("user");
+    const email = "a@gmail.com";
 
     if (!email) {
       throw new APIError("Email tidak ditemukan");
@@ -147,12 +286,55 @@ export default class DaftarKPHandler {
     return c.json(await DaftarKPService.getKPTerbaruMahasiswa(email));
   }
 
-  public static async createPermohonanPendaftaranKP(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
+  public static async updatePermohonanPendaftaranKP(c: Context) {
+    // const { email } = c.get("user");
+    const email = "a@gmail.com";
 
     const {
-      tanggalMulai,
+      tanggalMulai = new Date(),
+      tujuanSuratInstansi,
+      idInstansi,
+      judul_kp,
+      kelas_kp,
+    } = await c.req.json();
+
+    if (!email) {
+      throw new APIError("Email tidak ditemukan");
+    }
+
+    // try {
+    //   if (!email) {
+    //     throw new APIError("Email tidak ditemukan");
+    //   } else if (
+    //     !tanggalMulai ||
+    //     !Date.parse(tanggalMulai) ||
+    //     !tujuanSuratInstansi ||
+    //     !idInstansi
+    //   ) {
+    //     throw new APIError("Data yang anda masukkan kurang lengkap!");
+    //   }
+    // } catch (e) {
+    //   throw new APIError("Terdapat sebuah kesalahan pada input");
+    // }
+
+    return c.json(
+      await DaftarKPService.updatePermohonanPendaftaranKP({
+        email,
+        tanggalMulai,
+        tujuanSuratInstansi,
+        idInstansi,
+        judul_kp,
+        kelas_kp,
+      })
+    );
+  }
+
+  public static async createPermohonanPendaftaranKP(c: Context) {
+    // const { email } = c.get("user");
+    const email = "a@gmail.com";
+
+    const {
+      tanggalMulai = new Date(),
       tujuanSuratInstansi,
       idInstansi,
       judul_kp,
@@ -182,17 +364,27 @@ export default class DaftarKPHandler {
         idInstansi,
         judul_kp,
         kelas_kp,
-      })
+      }),
+      201
     );
   }
 
+  public static async getTahunAjaran(c: Context) {
+    return c.json(await DaftarKPService.getTahunAjaran());
+  }
+
   public static async getDataInstansi(c: Context) {
-    return c.json(await DaftarKPService.getDataInstansi());
+    // const { email } = c.get("user");
+    const email = "a@gmail.com";
+    if (!email) {
+      throw new APIError("Email mahasiswa tidak ditemukan");
+    }
+    return c.json(await DaftarKPService.getDataInstansi(email));
   }
 
   public static async createPermohonanPendaftaranInstansi(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
+    // const { email } = c.get("user");
+    const email = "a@gmail.com";
 
     const {
       namaInstansi,
@@ -207,7 +399,7 @@ export default class DaftarKPHandler {
     } = await c.req.json();
 
     if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
+      throw new APIError("Data email tidak ditemukan", 400);
     } else if (
       !namaInstansi ||
       !alamatInstansi ||
@@ -217,7 +409,7 @@ export default class DaftarKPHandler {
       !longitude ||
       !latitude
     ) {
-      throw new APIError("Data yang anda masukkan tidak lengkap", 405);
+      throw new APIError("Data yang anda masukkan tidak lengkap", 400);
     }
 
     return c.json(
@@ -232,113 +424,8 @@ export default class DaftarKPHandler {
         latitude,
         radius,
         profilSingkat,
-      })
-    );
-  }
-
-  public static async postSuratPengantarKP(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
-
-    const { linkSuratPengantarKP } = await c.req.json();
-
-    if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
-    } else if (!linkSuratPengantarKP) {
-      throw new APIError("Link surat tidak diisi", 404);
-    }
-    return c.json(
-      await DaftarKPService.postSuratPengantarKP(email, linkSuratPengantarKP)
-    );
-  }
-
-  public static async postSuratPenolakanInstansi(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
-
-    const { link_surat_penolakan_instansi } = await c.req.json();
-
-    if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
-    } else if (!link_surat_penolakan_instansi) {
-      throw new APIError("Link tidak dimasukkan", 404);
-    }
-
-    return c.json(
-      await DaftarKPService.postSuratPenolakanInstansi(
-        email,
-        link_surat_penolakan_instansi
-      )
-    );
-  }
-
-  public static async postSuratBalasanKP(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
-
-    const { linkSuratBalasanKP } = await c.req.json();
-
-    if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
-    }
-
-    return c.json(
-      await DaftarKPService.postSuratBalasanKP(email, linkSuratBalasanKP)
-    );
-  }
-
-  public static async postIdPengajuanDosenPembimbingKP(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
-
-    const { IdPengajuanDosenPembimbingKP } = await c.req.json();
-
-    if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
-    }
-
-    return c.json(
-      await DaftarKPService.postIdPengajuanDosenPembimbingKP(
-        email,
-        IdPengajuanDosenPembimbingKP
-      )
-    );
-  }
-
-  public static async postSuratPenunjukkanDosenPembimbingKP(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
-
-    const { linkSuratPenunjukkanDosenPembimbingKP } = await c.req.json();
-
-    if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
-    }
-
-    return c.json(
-      await DaftarKPService.postSuratPenunjukkanDosenPembimbingKP(
-        email,
-        linkSuratPenunjukkanDosenPembimbingKP
-      )
-    );
-  }
-
-  public static async postSuratPerpanjanganKP(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
-
-    const { linkSuratPerpanjanganKP, alasan_lanjut_kp } = await c.req.json();
-
-    if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
-    }
-
-    return c.json(
-      await DaftarKPService.postSuratPerpanjanganKP(
-        email,
-        linkSuratPerpanjanganKP,
-        alasan_lanjut_kp
-      )
+      }),
+      201
     );
   }
 
@@ -347,27 +434,27 @@ export default class DaftarKPHandler {
   }
 
   public static async putBerkasMahasiswa(c: Context) {
+    const { id } = c.req.param();
     const {
-      id,
       status,
       kelas_kp,
       tujuan_surat_instansi,
       link_surat_penolakan_instansi,
       link_surat_pengantar,
       link_surat_balasan,
-      link_surat_penunjukan_dospem,
+      link_surat_penunjukkan_dospem,
       link_surat_perpanjangan_kp,
       id_surat_pengajuan_dospem,
       status_link_surat_penolakan_instansi,
       status_link_surat_pengantar,
       status_link_surat_balasan,
-      status_link_surat_penunjukan_dospem,
+      status_link_surat_penunjukkan_dospem,
       status_link_surat_perpanjangan_kp,
       status_id_surat_pengajuan_dospem,
       catatan_link_surat_penolakan_instansi,
       catatan_link_surat_pengantar,
       catatan_link_surat_balasan,
-      catatan_link_surat_penunjukan_dospem,
+      catatan_link_surat_penunjukkan_dospem,
       catatan_link_surat_perpanjangan_kp,
       catatan_id_surat_pengajuan_dospem,
       catatan_penolakan,
@@ -375,7 +462,10 @@ export default class DaftarKPHandler {
       judul_kp,
       alasan_lanjut_kp,
       id_instansi,
-    } = (await c.req.json()) as any;
+      tanggal_mulai,
+      tanggal_selesai,
+      nip_pembimbing,
+    } = (await c.req.json()) as PutMahasiswaParamsInterface;
 
     if (!id) {
       throw new APIError("ID pendaftaran KP tidak ditemukan");
@@ -388,27 +478,27 @@ export default class DaftarKPHandler {
         status_link_surat_penolakan_instansi !== "Terkirim" &&
         status_link_surat_penolakan_instansi !== "Ditolak") ||
       (status_link_surat_pengantar !== null &&
-        status_link_surat_penolakan_instansi !== undefined &&
+        status_link_surat_pengantar !== undefined &&
         status_link_surat_pengantar !== "Divalidasi" &&
         status_link_surat_pengantar !== "Terkirim" &&
         status_link_surat_pengantar !== "Ditolak") ||
       (status_link_surat_balasan !== null &&
-        status_link_surat_penolakan_instansi !== undefined &&
+        status_link_surat_balasan !== undefined &&
         status_link_surat_balasan !== "Divalidasi" &&
         status_link_surat_balasan !== "Terkirim" &&
         status_link_surat_balasan !== "Ditolak") ||
       (status_id_surat_pengajuan_dospem !== null &&
-        status_link_surat_penolakan_instansi !== undefined &&
+        status_id_surat_pengajuan_dospem !== undefined &&
         status_id_surat_pengajuan_dospem !== "Divalidasi" &&
         status_id_surat_pengajuan_dospem !== "Terkirim" &&
         status_id_surat_pengajuan_dospem !== "Ditolak") ||
-      (status_link_surat_penunjukan_dospem !== null &&
-        status_link_surat_penolakan_instansi !== undefined &&
-        status_link_surat_penunjukan_dospem !== "Divalidasi" &&
-        status_link_surat_penunjukan_dospem !== "Terkirim" &&
-        status_link_surat_penunjukan_dospem !== "Ditolak") ||
+      (status_link_surat_penunjukkan_dospem !== null &&
+        status_link_surat_penunjukkan_dospem !== undefined &&
+        status_link_surat_penunjukkan_dospem !== "Divalidasi" &&
+        status_link_surat_penunjukkan_dospem !== "Terkirim" &&
+        status_link_surat_penunjukkan_dospem !== "Ditolak") ||
       (status_link_surat_perpanjangan_kp !== null &&
-        status_link_surat_penolakan_instansi !== undefined &&
+        status_link_surat_perpanjangan_kp !== undefined &&
         status_link_surat_perpanjangan_kp !== "Divalidasi" &&
         status_link_surat_perpanjangan_kp !== "Terkirim" &&
         status_link_surat_perpanjangan_kp !== "Ditolak")
@@ -426,19 +516,19 @@ export default class DaftarKPHandler {
         link_surat_penolakan_instansi,
         link_surat_pengantar,
         link_surat_balasan,
-        link_surat_penunjukan_dospem,
+        link_surat_penunjukkan_dospem,
         link_surat_perpanjangan_kp,
         id_surat_pengajuan_dospem,
         status_link_surat_penolakan_instansi,
         status_link_surat_pengantar,
         status_link_surat_balasan,
-        status_link_surat_penunjukan_dospem,
+        status_link_surat_penunjukkan_dospem,
         status_link_surat_perpanjangan_kp,
         status_id_surat_pengajuan_dospem,
         catatan_link_surat_penolakan_instansi,
         catatan_link_surat_pengantar,
         catatan_link_surat_balasan,
-        catatan_link_surat_penunjukan_dospem,
+        catatan_link_surat_penunjukkan_dospem,
         catatan_link_surat_perpanjangan_kp,
         catatan_id_surat_pengajuan_dospem,
         catatan_penolakan,
@@ -446,16 +536,19 @@ export default class DaftarKPHandler {
         judul_kp,
         alasan_lanjut_kp,
         id_instansi,
+        tanggal_mulai,
+        tanggal_selesai,
+        nip_pembimbing,
       })
     );
   }
 
   public static async getRiwayatPendaftaranKP(c: Context) {
-    const { email } = c.get("user");
-    // const email = "a@gmail.com";
+    // const { email } = c.get("user");
+    const email = "a@gmail.com";
 
     if (!email) {
-      throw new APIError("Data email tidak ditemukan", 404);
+      throw new APIError("Data email kosong", 400);
     }
 
     return c.json(await DaftarKPService.getRiwayatPendaftaranKP(email));

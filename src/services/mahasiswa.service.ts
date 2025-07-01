@@ -10,7 +10,8 @@ export default class MahasiswaService {
 
     return {
       response: true,
-      message: level_akses >= 5 ? "Sudah bisa diakses! 😁" : "Belum bisa diakses! 😡",
+      message:
+        level_akses >= 5 ? "Sudah bisa diakses! 😁" : "Belum bisa diakses! 😡",
       data: {
         id: id,
         nim: nim,
@@ -25,11 +26,16 @@ export default class MahasiswaService {
     pendaftaranId: string;
     missingOrInvalidDocuments: string[];
   }> {
-    const { id: pendaftaranId } = await MahasiswaRepository.getPendaftaranKP(nim);
+    const { id: pendaftaranId } = await MahasiswaRepository.getPendaftaranKP(
+      nim
+    );
 
-    const { allDokumenDivalidasi, statusDokumen } = await MahasiswaRepository.cekDokumenSeminarKP(nim, pendaftaranId);
+    const { allDokumenDivalidasi, statusDokumen } =
+      await MahasiswaRepository.cekDokumenSeminarKP(nim, pendaftaranId);
 
-    const missingOrInvalidDocuments = statusDokumen.filter((doc) => !doc.exists || !doc.validated).map((doc) => doc.type);
+    const missingOrInvalidDocuments = statusDokumen
+      .filter((doc) => !doc.exists || !doc.validated)
+      .map((doc) => doc.type);
 
     return {
       canScheduleSeminar: allDokumenDivalidasi,
@@ -60,7 +66,12 @@ export default class MahasiswaService {
     const jadwal = await MahasiswaRepository.getJadwalMahasiswa(nim, tanggal);
 
     const conflicts = jadwal.filter((jadwal) => {
-      return DateHelper.isTimeOverlapping(waktu_mulai, waktu_selesai, jadwal.waktu_mulai, jadwal.waktu_selesai);
+      return DateHelper.isTimeOverlapping(
+        waktu_mulai,
+        waktu_selesai,
+        jadwal.waktu_mulai,
+        jadwal.waktu_selesai
+      );
     });
 
     return {
@@ -69,9 +80,21 @@ export default class MahasiswaService {
     };
   }
 
+  public static async checkMurojaahDaftarKP(nim: string): Promise<boolean> {
+    const selesai_murojaah = await fetch(
+      `${process.env.MUROJAAH_API_URL}/mahasiswa/check-murojaah/${nim}?syarat=KP`
+    ).then((res) => res.json());
+    if (!selesai_murojaah || !selesai_murojaah.response) {
+      return false;
+    }
+    return selesai_murojaah.data.is_done;
+  }
+
   public static async checkMurojaah(nim: string): Promise<boolean> {
     // hit to endpoint {{URL_API}}{{BASE_URL_PUBLIC}}/internal/check-murojaah/:nim?syarat=KP.SEMKP
-    const selesai_murojaah = await fetch(`${process.env.MUROJAAH_API_URL}/mahasiswa/check-murojaah/${nim}?syarat=KP.SEMKP`).then((res) => res.json());
+    const selesai_murojaah = await fetch(
+      `${process.env.MUROJAAH_API_URL}/mahasiswa/check-murojaah/${nim}?syarat=KP.SEMKP`
+    ).then((res) => res.json());
     if (!selesai_murojaah || !selesai_murojaah.response) {
       return false;
     }
@@ -82,18 +105,24 @@ export default class MahasiswaService {
     const selesaiMurojaah = await MahasiswaService.checkMurojaah(nim);
     const pendaftaranKp = await MahasiswaRepository.getPendaftaranKP(nim);
 
-    const masihTerdaftarKP = pendaftaranKp && ["Baru", "Lanjut"].includes(pendaftaranKp.status || "");
+    const masihTerdaftarKP =
+      pendaftaranKp && ["Baru", "Lanjut"].includes(pendaftaranKp.status || "");
 
     const jumlahBimbingan = await MahasiswaRepository.countBimbinganByNIM(nim);
     const cukupBimbingan = jumlahBimbingan >= 5;
 
     const { level_akses } = await MahasiswaRepository.getPendaftaranKP(nim);
     if (level_akses < 5) {
-      throw new APIError(`Waduh, anda belum memiliki akses untuk mengupload dokumen seminar KP! 😭`, 403);
+      throw new APIError(
+        `Waduh, anda belum memiliki akses untuk mengupload dokumen seminar KP! 😭`,
+        403
+      );
     }
 
     const dailyReports = await MahasiswaRepository.getDailyReportsByNIM(nim);
-    const semuaDailyReportDisetujui = dailyReports.length > 0 && dailyReports.every((report) => report.status === "Disetujui");
+    const semuaDailyReportDisetujui =
+      dailyReports.length > 0 &&
+      dailyReports.every((report) => report.status === "Disetujui");
 
     const nilai = await MahasiswaRepository.getNilaiByNIM(nim);
     const sudahNilaiInstansi = nilai && nilai.nilai_instansi !== null;
@@ -104,7 +133,12 @@ export default class MahasiswaService {
       minimal_lima_bimbingan: cukupBimbingan,
       daily_report_sudah_approve: semuaDailyReportDisetujui,
       sudah_mendapat_nilai_instansi: sudahNilaiInstansi,
-      semua_syarat_terpenuhi: selesaiMurojaah && masihTerdaftarKP && cukupBimbingan && semuaDailyReportDisetujui && sudahNilaiInstansi,
+      semua_syarat_terpenuhi:
+        selesaiMurojaah &&
+        masihTerdaftarKP &&
+        cukupBimbingan &&
+        semuaDailyReportDisetujui &&
+        sudahNilaiInstansi,
     };
   }
 }
