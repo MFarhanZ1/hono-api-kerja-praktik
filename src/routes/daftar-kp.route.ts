@@ -1,8 +1,7 @@
-import { Context, Hono } from "hono";
+import { Hono } from "hono";
 import { RegExpRouter } from "hono/router/reg-exp-router";
 import DaftarKPHandler from "../handlers/daftar-kp.handler";
 import AuthMiddleware from "../middlewares/auth.middleware";
-import prisma from "../infrastructures/db.infrastructure";
 
 const daftarKPRoute = new Hono({ router: new RegExpRouter() });
 

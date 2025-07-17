@@ -19,7 +19,7 @@ export interface ServiceStatistikPendaftaran extends CommonResponse {
   data: {
     pendaftarPerTahunAjaran: {
       _count: number;
-      id_tahun_ajaran: number | null;
+      id_tahun_ajaran: string | null;
     }[];
     pendaftarPerAngkatan: {
       [key: string]: number;
@@ -156,5 +156,8 @@ export interface PutMahasiswaParamsInterface {
 }
 
 export interface getTahunAjaranService extends CommonResponse {
-  data: getTahunAjaran[];
+  data: {
+    kode: string;
+    nama: string;
+  }[];
 }

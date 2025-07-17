@@ -198,7 +198,7 @@ model pendaftaran_kp {
   alasan_lanjut_kp             String?              @db.VarChar(255)
 
   email_pembimbing_instansi    String?              @db.VarChar(255)
-  id_tahun_ajaran              Int?
+  id_tahun_ajaran              String
   id_instansi                  String?              @db.Uuid
   nim                          String?              @db.VarChar(11)
   nip_pembimbing               String?              @db.VarChar(20)
@@ -211,7 +211,6 @@ model pendaftaran_kp {
   nilai                        nilai[]
 
   instansi            instansi?            @relation(fields: [id_instansi], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  tahun_ajaran        tahun_ajaran?        @relation(fields: [id_tahun_ajaran], references: [id], onDelete: NoAction, onUpdate: NoAction)
   mahasiswa           mahasiswa?           @relation(fields: [nim], references: [nim], onDelete: NoAction, onUpdate: NoAction)
   dosen_pembimbing    dosen?               @relation("pembimbing", fields: [nip_pembimbing], references: [nip], onDelete: NoAction, onUpdate: NoAction)
   dosen_penguji       dosen?               @relation("penguji", fields: [nip_penguji], references: [nip], onDelete: NoAction, onUpdate: NoAction)
@@ -295,14 +294,6 @@ model komponen_penilaian_penguji {
   created_at           DateTime? @default(now()) @db.Timestamp(6)
   id_nilai             String? @unique @db.Uuid
   nilai                nilai?  @relation(fields: [id_nilai], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
-
-model tahun_ajaran {
-  id             Int              @id @default(autoincrement())
-  nama           String?          @db.VarChar(255)
-  created_at     DateTime?        @default(now()) @db.Timestamp(6)
-
-  pendaftaran_kp pendaftaran_kp[]
 }
 
 model validasi_nilai {

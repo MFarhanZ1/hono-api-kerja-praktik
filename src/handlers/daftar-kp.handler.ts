@@ -84,7 +84,6 @@ export default class DaftarKPHandler {
     const { id } = c.req.param();
     const { nomorBerkas, status, catatan, nipDospem } =
       (await c.req.json()) as PatchBerkasMahasiswaInterface;
-    console.log("nipDospem");
     if (!id) {
       throw new APIError("ID pendaftaran KP tidak ditemukan");
     }

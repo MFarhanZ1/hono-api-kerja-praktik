@@ -556,14 +556,6 @@ export default class DaftarKPService {
       throw new APIError("Tanggal Pendaftaran KP Sudah ditutup", 403);
     }
 
-    const isAlreadyRegistered = await cekTerdaftarTahunAjaran(dataMhs.nim);
-
-    if (isAlreadyRegistered) {
-      throw new APIError(
-        "Anda sudah terdaftar dalam kerja praktik tahun ajaran ini"
-      );
-    }
-
     const blackListInstansiID = await blackListInstansi(dataMhs.nim);
 
     if (blackListInstansiID.find((id) => id === idInstansi)) {
